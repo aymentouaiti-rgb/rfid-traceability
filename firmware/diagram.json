@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "author": "Aymen",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-mfrc522",
+      "id": "rfid",
+      "top": 0,
+      "left": 280,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:3V3", "rfid:3.3V", "red", [] ],
+    [ "esp:GND.1", "rfid:GND", "black", [] ],
+    [ "esp:D5", "rfid:SDA", "green", [] ],
+    [ "esp:D18", "rfid:SCK", "yellow", [] ],
+    [ "esp:D23", "rfid:MOSI", "blue", [] ],
+    [ "esp:D19", "rfid:MISO", "orange", [] ],
+    [ "esp:D22", "rfid:RST", "purple", [] ],
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ]
+  ]
+}

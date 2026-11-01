@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tour de Contrôle RFID — Aptiv (Live)</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#121b2e;
+    --panel-2:#0f1626;
+    --border:#22304a;
+    --text:#e7ecf5;
+    --text-dim:#8a97b3;
+    --accent:#3b82f6;
+    --ok:#22c55e;
+    --ok-bg:rgba(34,197,94,0.12);
+    --warn:#f59e0b;
+    --warn-bg:rgba(245,158,11,0.12);
+    --bad:#ef4444;
+    --bad-bg:rgba(239,68,68,0.14);
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 600px at 10% -10%, #12203f 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:22px 32px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(18,27,46,0.9), rgba(18,27,46,0.4));
+    flex-wrap:wrap;
+    gap:14px;
+  }
+  .title-block{display:flex; align-items:center; gap:14px;}
+  .logo{
+    width:42px; height:42px; border-radius:10px;
+    background:linear-gradient(135deg, #ef4444, #7f1d1d);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; letter-spacing:0.5px;
+    box-shadow:0 4px 14px rgba(239,68,68,0.35);
+  }
+  h1{font-size:19px; margin:0; font-weight:700; letter-spacing:0.2px;}
+  .subtitle{font-size:12.5px; color:var(--text-dim); margin-top:2px;}
+  .status-cluster{display:flex; align-items:center; gap:18px; font-size:13px; color:var(--text-dim);}
+  .conn{display:flex; align-items:center; gap:8px;}
+  .dot{width:9px; height:9px; border-radius:50%; background:var(--bad); box-shadow:0 0 8px var(--bad);}
+  .dot.on{background:var(--ok); box-shadow:0 0 8px var(--ok);}
+  .dot.pending{background:var(--warn); box-shadow:0 0 8px var(--warn);}
+  button{
+    font-family:inherit; font-size:13px; font-weight:600;
+    background:var(--panel-2); color:var(--text);
+    border:1px solid var(--border); border-radius:8px;
+    padding:8px 14px; cursor:pointer;
+  }
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent); border-color:var(--accent); color:white;}
+  main{padding:28px 32px 60px; max-width:1180px; margin:0 auto;}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:26px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px;
+  }
+  .card .num{font-size:30px; font-weight:800; font-family:var(--mono); line-height:1;}
+  .card .lbl{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
+  .card.accent-ok .num{color:var(--ok);}
+  .card.accent-warn .num{color:var(--warn);}
+  .card.accent-bad .num{color:var(--bad);}
+  .card.accent-blue .num{color:var(--accent);}
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    margin-bottom:22px; overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+  }
+  .panel-head h2{font-size:14.5px; margin:0; font-weight:700;}
+  .panel-head .count{font-size:12px; color:var(--text-dim); font-family:var(--mono);}
+  .panel-body{padding:6px 0;}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{
+    text-align:left; padding:10px 20px; color:var(--text-dim);
+    font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;
+    border-bottom:1px solid var(--border);
+  }
+  td{padding:11px 20px; border-bottom:1px solid rgba(34,48,74,0.5);}
+  tr:last-child td{border-bottom:none;}
+  tr.row-hover:hover{background:rgba(59,130,246,0.05);}
+  .tag{font-family:var(--mono); font-weight:600;}
+
+  .badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;
+  }
+  .badge .bdot{width:6px; height:6px; border-radius:50%;}
+  .badge.depot{background:var(--panel-2); color:var(--text-dim);}
+  .badge.depot .bdot{background:var(--text-dim);}
+  .badge.sorti{background:var(--warn-bg); color:var(--warn);}
+  .badge.sorti .bdot{background:var(--warn);}
+  .badge.ligne{background:var(--ok-bg); color:var(--ok);}
+  .badge.ligne .bdot{background:var(--ok);}
+
+  .empty{padding:34px 20px; text-align:center; color:var(--text-dim); font-size:13.5px;}
+
+  .anomaly-row td{background:var(--bad-bg);}
+  .anomaly-row .tag{color:var(--bad);}
+  .minutes{font-family:var(--mono); font-weight:700; color:var(--bad);}
+
+  .ia-tag{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:10.5px; font-weight:800; letter-spacing:0.4px;
+    background:rgba(139,92,246,0.14); color:#a78bfa;
+    padding:3px 8px; border-radius:999px; margin-left:8px;
+  }
+  .ia-row td{background:rgba(139,92,246,0.08);}
+  .ia-row .tag{color:#a78bfa;}
+  .score{font-family:var(--mono); font-weight:700; color:#a78bfa;}
+  .ia-method{padding:10px 20px; font-size:11.5px; color:var(--text-dim); border-bottom:1px solid var(--border); font-style:italic;}
+  .delta-pos{color:var(--bad);}
+  .delta-neg{color:var(--accent);}
+
+  footer{
+    text-align:center; padding:20px; color:var(--text-dim); font-size:11.5px;
+    border-top:1px solid var(--border);
+  }
+  code{background:var(--panel-2); padding:2px 6px; border-radius:5px; font-family:var(--mono); font-size:11.5px;}
+
+  .error-banner{
+    display:none;
+    background:var(--bad-bg); border:1px solid var(--bad); color:#fca5a5;
+    border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px;
+  }
+  .error-banner.show{display:block;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <div class="logo">RFID</div>
+    <div>
+      <h1>Tour de Contrôle — Traçabilité RFID</h1>
+      <div class="subtitle">Stage Aptiv &middot; connecté à <code id="apiUrlLabel">http://127.0.0.1:8000</code></div>
+    </div>
+  </div>
+  <div class="status-cluster">
+    <div class="conn"><span class="dot" id="connDot"></span><span id="connLabel">Connexion...</span></div>
+    <div id="lastUpdate">—</div>
+    <button id="refreshBtn">↻ Actualiser</button>
+    <button id="autoBtn" class="primary">⏸ Auto : ON</button>
+  </div>
+</header>
+
+<main>
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="cards">
+    <div class="card accent-blue"><div class="num" id="cardTotal">–</div><div class="lbl">Bacs suivis</div></div>
+    <div class="card"><div class="num" id="cardDepot">–</div><div class="lbl">Au dépôt</div></div>
+    <div class="card accent-warn"><div class="num" id="cardSorti">–</div><div class="lbl">Sortis (en transit)</div></div>
+    <div class="card accent-ok"><div class="num" id="cardLigne">–</div><div class="lbl">Arrivés à la ligne</div></div>
+    <div class="card accent-bad"><div class="num" id="cardAnomalies">–</div><div class="lbl">Anomalies actives</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>⚠ Anomalies détectées</h2>
+      <span class="count" id="anomalyCount">seuil : – min</span>
+    </div>
+    <div class="panel-body">
+      <table>
+        <thead>
+          <tr><th>Bac</th><th>Sorti depuis</th><th>Temps écoulé</th></tr>
+        </thead>
+        <tbody id="anomalyBody"></tbody>
+      </table>
+      <div class="empty" id="anomalyEmpty" style="display:none;">Aucune anomalie active pour le moment.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Anomalies de consommation<span class="ia-tag">🧠 IA · Isolation Forest</span></h2>
+      <span class="count" id="iaConsoCount">–</span>
+    </div>
+    <div class="ia-method" id="iaConsoMethod"></div>
+    <div class="panel-body">
+      <table>
+        <thead>
+          <tr><th>Jour</th><th>Ligne</th><th>Arrivées</th><th>Moyenne habituelle</th><th>Score d'anomalie</th></tr>
+        </thead>
+        <tbody id="iaConsoBody"></tbody>
+      </table>
+      <div class="empty" id="iaConsoEmpty" style="display:none;">Aucune anomalie de consommation détectée.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Délais de transport anormaux<span class="ia-tag">🧠 IA · Isolation Forest</span></h2>
+      <span class="count" id="iaDelaiCount">–</span>
+    </div>
+    <div class="ia-method" id="iaDelaiMethod"></div>
+    <div class="panel-body">
+      <table>
+        <thead>
+          <tr><th>Bac</th><th>Ligne</th><th>Délai observé</th><th>Délai habituel</th><th>Score d'anomalie</th></tr>
+        </thead>
+        <tbody id="iaDelaiBody"></tbody>
+      </table>
+      <div class="empty" id="iaDelaiEmpty" style="display:none;">Aucun délai anormal détecté.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Bacs suivis</h2>
+      <span class="count" id="bacsCount">0 bac</span>
+    </div>
+    <div class="panel-body">
+      <table>
+        <thead>
+          <tr><th>Tag ID</th><th>Nom</th><th>Statut</th></tr>
+        </thead>
+        <tbody id="bacsBody"></tbody>
+      </table>
+      <div class="empty" id="bacsEmpty" style="display:none;">Aucun bac enregistré pour l'instant. Scanne un tag depuis la simulation Wokwi pour en créer un.</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Rafraîchissement automatique toutes les 3 secondes &middot; Système de Traçabilité RFID Intelligente — Aptiv
+</footer>
+
+<script>
+  const API_BASE = "http://127.0.0.1:8000";
+  document.getElementById("apiUrlLabel").textContent = API_BASE;
+
+  let autoRefresh = true;
+  let timer = null;
+
+  const statusLabels = {
+    "au_depot": { text: "Au dépôt", cls: "depot" },
+    "sorti": { text: "Sorti", cls: "sorti" },
+    "a_la_ligne": { text: "À la ligne", cls: "ligne" },
+  };
+
+  function setConn(state) {
+    const dot = document.getElementById("connDot");
+    const label = document.getElementById("connLabel");
+    dot.className = "dot" + (state === "on" ? " on" : state === "pending" ? " pending" : "");
+    label.textContent = state === "on" ? "Serveur connecté" : state === "pending" ? "Connexion..." : "Serveur injoignable";
+  }
+
+  function showError(msg) {
+    const banner = document.getElementById("errorBanner");
+    if (msg) {
+      banner.textContent = msg;
+      banner.classList.add("show");
+    } else {
+      banner.classList.remove("show");
+    }
+  }
+
+  function fmtTime(iso) {
+    try {
+      const d = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+      return d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    } catch (e) { return iso; }
+  }
+
+  async function refresh() {
+    setConn("pending");
+    try {
+      const [bacsRes, anomRes, iaRes] = await Promise.all([
+        fetch(API_BASE + "/bacs"),
+        fetch(API_BASE + "/anomalies"),
+        fetch(API_BASE + "/anomalies/intelligentes"),
+      ]);
+      if (!bacsRes.ok || !anomRes.ok || !iaRes.ok) throw new Error("Réponse HTTP invalide");
+
+      const bacs = await bacsRes.json();
+      const anomalies = await anomRes.json();
+      const ia = await iaRes.json();
+
+      renderBacs(bacs);
+      renderAnomalies(anomalies);
+      renderIA(ia);
+
+      setConn("on");
+      showError(null);
+      document.getElementById("lastUpdate").textContent =
+        "Dernière mise à jour : " + new Date().toLocaleTimeString("fr-FR");
+    } catch (err) {
+      setConn("off");
+      showError(
+        "Impossible de joindre le serveur FastAPI sur " + API_BASE +
+        ". Vérifie qu'uvicorn tourne bien (uvicorn main:app --reload) dans le dossier rfid-traceability."
+      );
+    }
+  }
+
+  function renderBacs(bacs) {
+    const total = bacs.length;
+    const depot = bacs.filter(b => b.statut === "au_depot").length;
+    const sorti = bacs.filter(b => b.statut === "sorti").length;
+    const ligne = bacs.filter(b => b.statut === "a_la_ligne").length;
+
+    document.getElementById("cardTotal").textContent = total;
+    document.getElementById("cardDepot").textContent = depot;
+    document.getElementById("cardSorti").textContent = sorti;
+    document.getElementById("cardLigne").textContent = ligne;
+    document.getElementById("bacsCount").textContent = total + (total > 1 ? " bacs" : " bac");
+
+    const body = document.getElementById("bacsBody");
+    const empty = document.getElementById("bacsEmpty");
+    body.innerHTML = "";
+
+    if (total === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+
+    // Bacs actifs (sortis / à la ligne) en premier, puis au dépôt
+    const priority = { "sorti": 0, "a_la_ligne": 1, "au_depot": 2 };
+    const sorted = [...bacs].sort((a, b) => (priority[a.statut] ?? 9) - (priority[b.statut] ?? 9));
+
+    for (const b of sorted) {
+      const st = statusLabels[b.statut] || { text: b.statut, cls: "depot" };
+      const tr = document.createElement("tr");
+      tr.className = "row-hover";
+      tr.innerHTML =
+        '<td class="tag">' + escapeHtml(b.tag_id) + '</td>' +
+        '<td>' + escapeHtml(b.nom || "—") + '</td>' +
+        '<td><span class="badge ' + st.cls + '"><span class="bdot"></span>' + st.text + '</span></td>';
+      body.appendChild(tr);
+    }
+  }
+
+  function renderAnomalies(data) {
+    document.getElementById("anomalyCount").textContent = "seuil : " + data.seuil_minutes + " min";
+    document.getElementById("cardAnomalies").textContent = data.anomalies.length;
+
+    const body = document.getElementById("anomalyBody");
+    const empty = document.getElementById("anomalyEmpty");
+    body.innerHTML = "";
+
+    if (data.anomalies.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+
+    const sorted = [...data.anomalies].sort((a, b) => b.minutes_ecoulees - a.minutes_ecoulees);
+    for (const a of sorted) {
+      const tr = document.createElement("tr");
+      tr.className = "anomaly-row";
+      tr.innerHTML =
+        '<td class="tag">' + escapeHtml(a.tag_id) + '</td>' +
+        '<td>' + fmtTime(a.sorti_depuis) + '</td>' +
+        '<td class="minutes">' + a.minutes_ecoulees + ' min</td>';
+      body.appendChild(tr);
+    }
+  }
+
+  function renderIA(data) {
+    renderIAConso(data.consommation);
+    renderIADelai(data.delai_transport);
+  }
+
+  function renderIAConso(c) {
+    const body = document.getElementById("iaConsoBody");
+    const empty = document.getElementById("iaConsoEmpty");
+    const count = document.getElementById("iaConsoCount");
+    const method = document.getElementById("iaConsoMethod");
+    body.innerHTML = "";
+
+    if (!c.disponible) {
+      count.textContent = "indisponible";
+      method.textContent = c.raison || "";
+      empty.style.display = "block";
+      empty.textContent = c.raison || "Historique insuffisant.";
+      return;
+    }
+
+    method.textContent = c.methode + " · " + c.observations_analysees + " observations (jour × ligne) analysées";
+    count.textContent = c.anomalies.length + " anomalie(s)";
+
+    if (c.anomalies.length === 0) {
+      empty.style.display = "block";
+      empty.textContent = "Aucune anomalie de consommation détectée.";
+      return;
+    }
+    empty.style.display = "none";
+
+    for (const a of c.anomalies) {
+      const tr = document.createElement("tr");
+      tr.className = "ia-row";
+      const deltaCls = a.ecart >= 0 ? "delta-pos" : "delta-neg";
+      const deltaSign = a.ecart >= 0 ? "+" : "";
+      tr.innerHTML =
+        '<td class="tag">' + escapeHtml(a.jour) + '</td>' +
+        '<td>' + escapeHtml(a.ligne) + '</td>' +
+        '<td>' + a.nb_arrivees + ' <span class="' + deltaCls + '">(' + deltaSign + a.ecart + ')</span></td>' +
+        '<td>' + a.moyenne_habituelle_ligne + '</td>' +
+        '<td class="score">' + a.score_anomalie + '</td>';
+      body.appendChild(tr);
+    }
+  }
+
+  function renderIADelai(d) {
+    const body = document.getElementById("iaDelaiBody");
+    const empty = document.getElementById("iaDelaiEmpty");
+    const count = document.getElementById("iaDelaiCount");
+    const method = document.getElementById("iaDelaiMethod");
+    body.innerHTML = "";
+
+    if (!d.disponible) {
+      count.textContent = "indisponible";
+      method.textContent = d.raison || "";
+      empty.style.display = "block";
+      empty.textContent = d.raison || "Historique insuffisant.";
+      return;
+    }
+
+    method.textContent = d.methode + " · " + d.observations_analysees + " cycles sortie→arrivée analysés";
+    count.textContent = d.anomalies.length + " anomalie(s)";
+
+    if (d.anomalies.length === 0) {
+      empty.style.display = "block";
+      empty.textContent = "Aucun délai anormal détecté.";
+      return;
+    }
+    empty.style.display = "none";
+
+    for (const a of d.anomalies) {
+      const tr = document.createElement("tr");
+      tr.className = "ia-row";
+      tr.innerHTML =
+        '<td class="tag">' + escapeHtml(a.tag_id) + '</td>' +
+        '<td>' + escapeHtml(a.ligne) + '</td>' +
+        '<td>' + a.delai_min + ' min</td>' +
+        '<td>' + a.delai_moyen_ligne + ' min</td>' +
+        '<td class="score">' + a.score_anomalie + '</td>';
+      body.appendChild(tr);
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function startAuto() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(refresh, 3000);
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", refresh);
+  document.getElementById("autoBtn").addEventListener("click", () => {
+    autoRefresh = !autoRefresh;
+    const btn = document.getElementById("autoBtn");
+    if (autoRefresh) {
+      btn.textContent = "⏸ Auto : ON";
+      btn.classList.add("primary");
+      startAuto();
+    } else {
+      btn.textContent = "▶ Auto : OFF";
+      btn.classList.remove("primary");
+      if (timer) clearInterval(timer);
+    }
+  });
+
+  refresh();
+  startAuto();
+</script>
+
+</body>
+</html>
